@@ -10,9 +10,10 @@
   "containers": [
     {
       "class_name": "MyContainer",
-      "image": "./Dockerfile",
-      "max_instances": 10,
-      "name": "hello-containers"
+      "image": "./container_src/Dockerfile",
+      "max_instances": 5,
+      "name": "hello-containers",
+      "instance_type": "standard"
     }
   ],
   "durable_objects": {

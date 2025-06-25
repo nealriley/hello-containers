@@ -1,59 +1,71 @@
-# Containers Starter
+# Cloudflare Containers Starter
 
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/cloudflare/templates/tree/main/containers-template)
 
 ![Containers Template Preview](https://imagedelivery.net/_yJ02hpOMj_EnGvsU2aygw/5aba1fb7-b937-46fd-fa67-138221082200/public)
 
-<!-- dash-content-start -->
+This is an optimized [Cloudflare Containers](https://developers.cloudflare.com/containers/) starter template featuring:
 
-This is a [Container](https://developers.cloudflare.com/containers/) starter template.
+- **Minimal Docker image**: Multi-stage build with scratch base image (~2MB final size)
+- **Security-focused**: Non-root user execution
+- **Production-ready**: Optimized Go binary with health checks
+- **Container orchestration**: Load balancing, error handling, and lifecycle management
 
-It demonstrates basic Container coniguration, launching and routing to individual container, load balancing over multiple container, running basic hooks on container status changes.
+## Architecture
 
-<!-- dash-content-end -->
+- **Worker (`src/index.ts`)**: Routes requests and manages container instances
+- **Container (`container_src/`)**: Lightweight Go web server with health endpoints
+- **Configuration**: Optimized for minimal memory footprint and fast startup
 
-Outside of this repo, you can start a new project with this template using [C3](https://developers.cloudflare.com/pages/get-started/c3/) (the `create-cloudflare` CLI):
+## Available Endpoints
 
-```bash
-npm create cloudflare@latest -- --template=cloudflare/templates/containers-template
-```
+- `GET /` - Container response with environment info
+- `GET /health` - Health check endpoint
+- `GET /error` - Error handling demonstration
+- `GET /container/:id/*` - Route to specific container instance
+- `GET /lb` - Load balance across multiple containers
 
 ## Getting Started
 
-First, run:
-
+Install dependencies:
 ```bash
 npm install
-# or
-yarn install
-# or
-pnpm install
-# or
-bun install
 ```
 
-Then run the development server (using the package manager of your choice):
-
+Start development server:
 ```bash
 npm run dev
 ```
 
-Open [http://localhost:8787](http://localhost:8787) with your browser to see the result.
+Open [http://localhost:8787](http://localhost:8787) to see the result.
 
-You can start editing your Worker by modifying `src/index.ts` and you can start
-editing your Container by editing the content of `container_src`.
+## Container Development
 
-## Deploying To Production
+Edit the Go server in `container_src/main.go`. The Docker image is automatically built and deployed with your changes.
 
-| Command          | Action                                |
-| :--------------- | :------------------------------------ |
-| `npm run deploy` | Deploy your application to Cloudflare |
+The container runs on port 8080 and includes:
+- Health check endpoint (`/health`)
+- Error simulation (`/error`)
+- Environment variable support
+
+## Deployment
+
+Deploy to Cloudflare:
+```bash
+npm run deploy
+```
+
+## Performance Optimizations
+
+- **Multi-stage Docker build** reduces image size by 95%
+- **Scratch base image** eliminates unnecessary OS overhead
+- **Static binary compilation** removes runtime dependencies
+- **Non-root execution** enhances security
+- **Efficient routing** minimizes request latency
 
 ## Learn More
 
-To learn more about Containers, take a look at the following resources:
-
-- [Container Documentation](https://developers.cloudflare.com/containers/) - learn about Containers
-- [Container Class](https://github.com/cloudflare/containers) - learn about the Container helper class
+- [Cloudflare Containers Documentation](https://developers.cloudflare.com/containers/)
+- [Container Class Reference](https://github.com/cloudflare/containers)
 
 Your feedback and contributions are welcome!

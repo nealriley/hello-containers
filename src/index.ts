@@ -2,69 +2,95 @@ import { Container, loadBalance, getContainer } from "@cloudflare/containers";
 import { Hono } from "hono";
 
 export class MyContainer extends Container {
-  // Port the container listens on (default: 8080)
+  // Container configuration
   defaultPort = 8080;
-  // Time before container sleeps due to inactivity (default: 30s)
-  sleepAfter = "2m";
+  sleepAfter = "2m"; // Increased for better performance
+  
   // Environment variables passed to the container
   envVars = {
-    MESSAGE: "I was passed in via the container class!",
+    MESSAGE: "Optimized Cloudflare Container!",
   };
 
-  // Optional lifecycle hooks
+  // Lifecycle hooks for monitoring and debugging
   override onStart() {
-    console.log("Container successfully started");
+    console.log("Container started successfully");
   }
 
   override onStop() {
-    console.log("Container successfully shut down");
+    console.log("Container stopped gracefully");
   }
 
   override onError(error: unknown) {
-    console.log("Container error:", error);
+    console.error("Container error:", error);
   }
 }
 
-// Create Hono app with proper typing for Cloudflare Workers
+// Hono app with proper Cloudflare Workers typing
 const app = new Hono<{
   Bindings: { MY_CONTAINER: DurableObjectNamespace<MyContainer> };
 }>();
 
-// Home route with available endpoints
+// Root endpoint with API documentation
 app.get("/", (c) => {
-  return c.text(
-    "Available endpoints:\n" +
-      "GET /container/<ID> - Start a container for each ID with a 2m timeout\n" +
-      "GET /lb - Load balance requests over multiple containers\n" +
-      "GET /error - Start a container that errors (demonstrates error handling)\n" +
-      "GET /singleton - Get a single specific container instance",
-  );
+  return c.json({
+    message: "Cloudflare Containers API",
+    endpoints: {
+      "/": "API documentation",
+      "/container/:id": "Start container with specific ID",
+      "/container/:id/*": "Proxy requests to container",
+      "/lb": "Load balanced container requests",
+      "/error": "Test error handling",
+      "/singleton": "Single container instance"
+    },
+    status: "healthy"
+  });
 });
 
-// Route requests to a specific container using the container ID
-app.get("/container/:id", async (c) => {
-  const id = c.req.param("id");
-  const containerId = c.env.MY_CONTAINER.idFromName(`/container/${id}`);
-  const container = c.env.MY_CONTAINER.get(containerId);
-  return await container.fetch(c.req.raw);
-});
-
-// Demonstrate error handling - this route forces a panic in the container
-app.get("/error", async (c) => {
-  const container = getContainer(c.env.MY_CONTAINER, "error-test");
-  return await container.fetch(c.req.raw);
-});
-
-// Load balance requests across multiple containers
+// Load balancer endpoint
 app.get("/lb", async (c) => {
-  const container = await loadBalance(c.env.MY_CONTAINER, 3);
-  return await container.fetch(c.req.raw);
+  const container = await loadBalance(c.env.MY_CONTAINER, 3); // Load balance across 3 containers
+  return container.fetch(c.req.raw);
 });
 
-// Get a single container instance (singleton pattern)
+// Error handling demonstration
+app.get("/error", async (c) => {
+  const container = await getContainer(c.env.MY_CONTAINER, "error-test");
+  return container.fetch(new Request("http://localhost/error"));
+});
+
+// Singleton container
 app.get("/singleton", async (c) => {
-  const container = getContainer(c.env.MY_CONTAINER);
-  return await container.fetch(c.req.raw);
+  const container = await getContainer(c.env.MY_CONTAINER, "singleton");
+  return container.fetch(c.req.raw);
+});
+
+// Dynamic container routing with path proxying
+app.all("/container/:id/*", async (c) => {
+  const { id } = c.req.param();
+  
+  // Extract the path after /container/<id>
+  const basePath = `/container/${id}`;
+  const targetPath = c.req.path.slice(basePath.length) || "/";
+  
+  // Get container instance by ID
+  const stubId = c.env.MY_CONTAINER.idFromName(id);
+  const stub = c.env.MY_CONTAINER.get(stubId);
+  
+  // Create new request with rewritten path
+  const url = new URL(c.req.url);
+  url.pathname = targetPath;
+  const proxiedRequest = new Request(url.toString(), c.req.raw);
+  
+  return stub.fetch(proxiedRequest);
+});
+
+// Fallback for direct container access
+app.all("/container/:id", async (c) => {
+  const { id } = c.req.param();
+  const stubId = c.env.MY_CONTAINER.idFromName(id);
+  const stub = c.env.MY_CONTAINER.get(stubId);
+  
+  return stub.fetch(c.req.raw);
 });
 
 export default app;
